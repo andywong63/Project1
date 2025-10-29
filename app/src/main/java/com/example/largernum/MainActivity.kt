@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,10 +43,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.InteropView
+import kotlin.inc
 import kotlin.random.Random
 import kotlin.random.nextInt
 
 class MainActivity : ComponentActivity() {
+    var num1: Double = 0.0
+    var num2: Double = 0.0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -105,17 +110,6 @@ class MainActivity : ComponentActivity() {
         var score by remember { mutableIntStateOf(0) }
         var strikes by remember { mutableIntStateOf(0) }
 
-        var num1 by remember { mutableDoubleStateOf(0.0) }
-        var num2 by remember { mutableDoubleStateOf(0.0) }
-        var num1Disp by remember { mutableStateOf("0") }
-        var num2Disp by remember { mutableStateOf("0") }
-        generateNumbers { n1, n2, n1Disp, n2Disp ->
-            num1 = n1
-            num2 = n2
-            num1Disp = n1Disp
-            num2Disp = n2Disp
-        }
-
         var lastResult by remember { mutableStateOf("") }
 
         val background = when (lastResult) {
@@ -157,19 +151,27 @@ class MainActivity : ComponentActivity() {
                     )
                 )
                 Spacer(Modifier.height(32.dp))
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+
+                var num1Disp by remember { mutableStateOf("0") }
+                var num2Disp by remember { mutableStateOf("0") }
+                LaunchedEffect(true) {
+                    generateNumbers { n1, n2 ->
+                        num1Disp = n1
+                        num2Disp = n2
+                    }
+                }
+
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
                     Button(onClick = {
                         lastResult = ""
                         score = 0
                         strikes = 0
-                        generateNumbers { n1, n2, n1Disp, n2Disp ->
-                            num1 = n1
-                            num2 = n2
-                            num1Disp = n1Disp
-                            num2Disp = n2Disp
+                        generateNumbers { n1, n2 ->
+                            num1Disp = n1
+                            num2Disp = n2
                         }
                     }) {
                         Text(
@@ -177,58 +179,90 @@ class MainActivity : ComponentActivity() {
                             fontSize = 24.sp
                         )
                     }
-                    Spacer(Modifier.height(32.dp))
-                    Text(
-                        text = "Tap the larger number!",
-                        fontSize = 32.sp
-                    )
-                    Spacer(Modifier.height(48.dp))
-                    NumberBox(num1Disp, Color(0xff6bd0ff)) {
-                        if (num1 >= num2) {
-                            score++
-                            lastResult = "WON"
-                        } else {
-                            strikes++
-                            lastResult = "FAIL"
-                        }
-                        generateNumbers { n1, n2, n1Disp, n2Disp ->
-                            num1 = n1
-                            num2 = n2
-                            num1Disp = n1Disp
-                            num2Disp = n2Disp
-                        }
-                    }
-                    Spacer(Modifier.height(48.dp))
-                    NumberBox(num2Disp, Color(0xffffbe6e)) {
-                        if (num2 >= num1) {
-                            score++
-                            lastResult = "WON"
-                        } else {
-                            strikes++
-                            lastResult = "FAIL"
-                        }
-                        generateNumbers { n1, n2, n1Disp, n2Disp ->
-                            num1 = n1
-                            num2 = n2
-                            num1Disp = n1Disp
-                            num2Disp = n2Disp
-                        }
-                    }
                 }
+                Spacer(Modifier.height(32.dp))
+                GameColumn(
+                    score,
+                    strikes,
+                    num1Disp,
+                    num2Disp,
+                    guessSuccess = {
+                        score++
+                        lastResult = "WON"
+                    },
+                    guessFail = {
+                        strikes++
+                        lastResult = "FAIL"
+                    },
+                    generateNumbers = {
+                        generateNumbers { n1, n2 ->
+                            num1Disp = n1
+                            num2Disp = n2
+                        }
+                    },
+                    win = {
+                        lastResult = ""
+                    },
+                    lose = {
+                        lastResult = ""
+                    }
+                )
             }
         }
     }
 
-    fun generateNumbers(set: (Double, Double, String, String) -> Unit) {
-        var num1: Int
-        var num2: Int
-        var num1Disp: String
-        var num2Disp: String
-        num1 = Random.nextInt(0, 100)
-        num2 = Random.nextInt(0, 100)
-        num1Disp = num1.toString()
-        num2Disp = num2.toString()
-        set(num1.toDouble(), num2.toDouble(), num1Disp, num2Disp)
+    @Composable
+    fun GameColumn(
+        score: Int,
+        strikes: Int,
+        num1Disp: String,
+        num2Disp: String,
+        guessSuccess: () -> Unit,
+        guessFail: () -> Unit,
+        generateNumbers: () -> Unit,
+        win: () -> Unit,
+        lose: () -> Unit
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Tap the larger number!",
+                fontSize = 32.sp
+            )
+
+            Spacer(Modifier.height(48.dp))
+            NumberBox(num1Disp, Color(0xff6bd0ff)) {
+                if (num1 >= num2) {
+                    guessSuccess()
+                    if (score + 1 >= 10) win()
+                } else {
+                    guessFail()
+                    if (strikes + 1 >= 10) lose()
+                }
+                generateNumbers()
+            }
+            Spacer(Modifier.height(48.dp))
+            NumberBox(num2Disp, Color(0xffffbe6e)) {
+                if (num2 >= num1) {
+                    guessSuccess()
+                    if (score + 1 >= 10) win()
+                } else {
+                    guessFail()
+                    if (strikes + 1 >= 10) lose()
+                }
+                generateNumbers()
+            }
+        }
+    }
+
+    fun generateNumbers(updateDispVars: (String, String) -> Unit) {
+        val n1 = Random.nextInt(0, 100)
+        val n2 = Random.nextInt(0, 100)
+        num1 = n1.toDouble()
+        num2 = n2.toDouble()
+        updateDispVars(n1.toString(), n2.toString())
     }
 
 
@@ -248,7 +282,7 @@ fun NumberBox(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(128.dp)
+            .size(150.dp)
             .background(color)
             .clickable(onClick = onClick)
     ) {
