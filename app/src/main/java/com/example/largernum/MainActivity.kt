@@ -1,6 +1,7 @@
 package com.example.largernum
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -25,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,16 +36,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.InteropView
-import kotlin.inc
+import com.example.largernum.ui.theme.GeneratedNumber
+import kotlin.math.E
+import kotlin.math.PI
 import kotlin.random.Random
-import kotlin.random.nextInt
 
 class MainActivity : ComponentActivity() {
     var num1: Double = 0.0
@@ -111,10 +112,11 @@ class MainActivity : ComponentActivity() {
         var strikes by remember { mutableIntStateOf(0) }
 
         var lastResult by remember { mutableStateOf("") }
+        var gameEnded by remember { mutableStateOf(false) }
 
         val background = when (lastResult) {
-            "WON" -> Color(0xff73ff8a)
-            "FAIL" -> Color(0xffff7373)
+            "CORRECT" -> Color(0xff73ff8a)
+            "INCORRECT" -> Color(0xffff7373)
             else -> Color(0xFFFDEF74)
         }
 
@@ -123,11 +125,16 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                     .padding(top = 64.dp, start = 12.dp, end = 12.dp)
             ) {
+                val scoreColor = when (lastResult) {
+                    "CORRECT" -> Color(0xffffe047)
+                    "WIN" -> Color(0xff30ff91)
+                    else -> Color.Black
+                }
                 Text(
                     text = "Score: $score",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (lastResult == "WON") Color(0xffffe047) else Color.Black,
+                    color = scoreColor,
                     style = TextStyle(
                         shadow = Shadow(
                             color = Color.Black.copy(alpha = 0.5f),
@@ -137,11 +144,16 @@ class MainActivity : ComponentActivity() {
                     )
                 )
                 Spacer(Modifier.height(16.dp))
+                val strikeColor = when (lastResult) {
+                    "INCORRECT" -> Color(0xffffe047)
+                    "LOSE" -> Color(0xffff4d4d)
+                    else -> Color.Black
+                }
                 Text(
                     text = "Strikes: $strikes",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (lastResult == "FAIL") Color(0xffffe047) else Color.Black,
+                    color = strikeColor,
                     style = TextStyle(
                         shadow = Shadow(
                             color = Color.Black.copy(alpha = 0.5f),
@@ -173,6 +185,7 @@ class MainActivity : ComponentActivity() {
                             num1Disp = n1
                             num2Disp = n2
                         }
+                        gameEnded = false
                     }) {
                         Text(
                             text = "Restart",
@@ -181,47 +194,61 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 Spacer(Modifier.height(32.dp))
-                GameColumn(
-                    score,
-                    strikes,
-                    num1Disp,
-                    num2Disp,
-                    guessSuccess = {
-                        score++
-                        lastResult = "WON"
-                    },
-                    guessFail = {
-                        strikes++
-                        lastResult = "FAIL"
-                    },
-                    generateNumbers = {
-                        generateNumbers { n1, n2 ->
-                            num1Disp = n1
-                            num2Disp = n2
-                        }
-                    },
-                    win = {
-                        lastResult = ""
-                    },
-                    lose = {
-                        lastResult = ""
+
+                if (gameEnded) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Tap restart to play again!",
+                            fontSize = 32.sp
+                        )
                     }
-                )
+                } else {
+                    val context = LocalContext.current
+                    GameColumn(
+                        num1Disp,
+                        num2Disp,
+                        guessSuccess = {
+                            score++
+                            lastResult = "CORRECT"
+                            if (score >= 10) {
+                                lastResult = "WIN"
+                                gameEnded = true
+                                Toast.makeText(context, "Congrats, you won!", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        },
+                        guessFail = {
+                            strikes++
+                            lastResult = "INCORRECT"
+                            if (strikes >= 3) {
+                                lastResult = "LOSE"
+                                gameEnded = true
+                                Toast.makeText(context, "Sorry, you lost", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        },
+                        generateNumbers = {
+                            generateNumbers { n1, n2 ->
+                                num1Disp = n1
+                                num2Disp = n2
+                            }
+                        }
+                    )
+                }
             }
         }
     }
 
     @Composable
     fun GameColumn(
-        score: Int,
-        strikes: Int,
         num1Disp: String,
         num2Disp: String,
         guessSuccess: () -> Unit,
         guessFail: () -> Unit,
-        generateNumbers: () -> Unit,
-        win: () -> Unit,
-        lose: () -> Unit
+        generateNumbers: () -> Unit
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -236,10 +263,8 @@ class MainActivity : ComponentActivity() {
             NumberBox(num1Disp, Color(0xff6bd0ff)) {
                 if (num1 >= num2) {
                     guessSuccess()
-                    if (score + 1 >= 10) win()
                 } else {
                     guessFail()
-                    if (strikes + 1 >= 10) lose()
                 }
                 generateNumbers()
             }
@@ -247,10 +272,8 @@ class MainActivity : ComponentActivity() {
             NumberBox(num2Disp, Color(0xffffbe6e)) {
                 if (num2 >= num1) {
                     guessSuccess()
-                    if (score + 1 >= 10) win()
                 } else {
                     guessFail()
-                    if (strikes + 1 >= 10) lose()
                 }
                 generateNumbers()
             }
@@ -258,11 +281,12 @@ class MainActivity : ComponentActivity() {
     }
 
     fun generateNumbers(updateDispVars: (String, String) -> Unit) {
-        val n1 = Random.nextInt(0, 100)
-        val n2 = Random.nextInt(0, 100)
-        num1 = n1.toDouble()
-        num2 = n2.toDouble()
-        updateDispVars(n1.toString(), n2.toString())
+        val n1 = generateNum()
+        val n2 = generateNum()
+        num1 = n1.number
+        num2 = n2.number
+
+        updateDispVars(n1.display, n2.display)
     }
 
 
@@ -270,6 +294,19 @@ class MainActivity : ComponentActivity() {
     @Preview
     fun MainLayoutPreview() {
         MainLayout()
+    }
+}
+
+fun generateNum(): GeneratedNumber {
+    val seed = Random.nextInt(0, 100)
+
+    return when (seed) {
+        in 1..5 -> GeneratedNumber(PI, "π")
+        in 5..50 -> GeneratedNumber(E, "e")
+        else -> {
+            val n1 = Random.nextInt(0, 100)
+            GeneratedNumber(n1.toDouble(), n1.toString())
+        }
     }
 }
 
