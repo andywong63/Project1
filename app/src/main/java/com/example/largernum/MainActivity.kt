@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.example.largernum.ui.theme.GeneratedNumber
 import kotlin.math.E
 import kotlin.math.PI
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
@@ -64,11 +65,29 @@ class MainActivity : ComponentActivity() {
     fun MainLayout() {
         var currentScreen by remember { mutableStateOf("START") }
 
+        var buttonClick by remember { mutableStateOf({
+            currentScreen = "GAME"
+        }) }
+
         when (currentScreen) {
             "START" -> StartScreen {
                 currentScreen = "GAME"
             }
             "GAME" -> GameScreen()
+        }
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 150.dp)
+        ) {
+            Button(onClick = buttonClick) {
+                Text(
+                    text = if (currentScreen == "START") "Start" else "Restart",
+                    fontSize = 24.sp
+                )
+            }
         }
     }
 
@@ -81,12 +100,12 @@ class MainActivity : ComponentActivity() {
                 .background(Color(0xFFFDEF74))
                 .fillMaxSize()
         ) {
-            Button(onClick = onStartClick) {
-                Text(
-                    text = "Start",
-                    fontSize = 24.sp
-                )
-            }
+//            Button(onClick = onStartClick) {
+//                Text(
+//                    text = "Start",
+//                    fontSize = 24.sp
+//                )
+//            }
             Spacer(Modifier.height(32.dp))
             Text(
                 text = "Tap Start to begin",
@@ -300,8 +319,9 @@ fun generateNum(): GeneratedNumber {
     val seed = Random.nextInt(0, 100)
 
     return when (seed) {
-        in 0..9 -> GeneratedNumber(PI, "π")
-        in 10..19 -> GeneratedNumber(E, "e")
+        in 0..4 -> GeneratedNumber(PI, "π")
+        in 5..9 -> GeneratedNumber(E, "e")
+        in 10..14 -> GeneratedNumber((1 + sqrt(5.0)) / 2, "Φ")
         else -> {
             val n1 = Random.nextInt(0, 100)
             GeneratedNumber(n1.toDouble(), n1.toString())
