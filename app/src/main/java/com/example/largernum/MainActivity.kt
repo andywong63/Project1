@@ -63,7 +63,6 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun MainLayout() {
         var currentScreen by remember { mutableStateOf("START") }
-//    var currentScreen by remember { mutableStateOf("GAME") }
 
         when (currentScreen) {
             "START" -> StartScreen {
@@ -301,8 +300,8 @@ fun generateNum(): GeneratedNumber {
     val seed = Random.nextInt(0, 100)
 
     return when (seed) {
-        in 1..5 -> GeneratedNumber(PI, "π")
-        in 5..50 -> GeneratedNumber(E, "e")
+        in 0..9 -> GeneratedNumber(PI, "π")
+        in 10..19 -> GeneratedNumber(E, "e")
         else -> {
             val n1 = Random.nextInt(0, 100)
             GeneratedNumber(n1.toDouble(), n1.toString())
